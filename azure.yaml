@@ -1,0 +1,17 @@
+name: cost-optimization-demo
+metadata:
+  description: Demo environment with cost optimization opportunities for SRE Agent to detect
+
+services:
+  api:
+    project: ./src/api
+    host: appservice
+    language: js
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+pipeline:
+  provider: github
