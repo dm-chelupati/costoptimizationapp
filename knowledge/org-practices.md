@@ -95,6 +95,36 @@ This document defines our company's mandatory security, cost, and operational pr
 - Underutilized VMs (< 20% CPU): Downsize by one tier
 - Batch workloads: Convert to Spot VMs
 
+**High Utilization — SKU Upsize Recommendations:**
+When a VM is consistently over-utilized on any of the following metrics, recommend upgrading to the next available SKU size:
+- **CPU utilization > 85% average over 7+ days** - VM is CPU-constrained, upsize to the next available SKU
+- **Disk throughput or IOPS > 85% of SKU limit** - VM is disk I/O constrained, upsize to the next available SKU
+- **Network (NIC) throughput > 85% of SKU bandwidth limit** - VM is network-constrained, upsize to the next available SKU
+
+> Recommend the next immediately larger SKU within the same series (e.g., `Standard_D2s_v3` → `Standard_D4s_v3`) to minimize disruption and avoid over-provisioning.
+
+### Microsoft Defender for Servers
+
+**Plan Selection Based on Environment Tag:**
+
+The `environment` tag on a server determines the required Microsoft Defender for Servers plan:
+
+| Environment Tag Value | Recommended Defender Plan | Rationale |
+|-----------------------|---------------------------|-----------|
+| `production` / `prod` | **Defender for Servers Plan P2** | Full protection including vulnerability assessment, file integrity monitoring, and threat detection |
+| Any other value (e.g., `dev`, `staging`, `test`) | **Defender for Servers Plan P1** | Baseline protection at reduced cost for non-production workloads |
+
+**Requirements:**
+- Servers tagged `environment: production` or `environment: prod` **must** have Defender for Servers **Plan P2** enabled
+- Servers tagged with any other environment value **should** have Defender for Servers **Plan P1** enabled as a minimum baseline
+- Servers with no `environment` tag should be flagged for tagging remediation before a Defender plan is assigned
+- Defender plan must be applied at the subscription or resource level via Microsoft Defender for Cloud
+
+**Remediation:**
+- Review Defender for Cloud coverage and ensure all servers have an active plan
+- Upgrade non-compliant production servers from P1 to P2
+- For non-production servers on P2, consider downgrading to P1 to reduce costs
+
 ### Orphaned Resources
 
 **Resources to Monitor:**
@@ -146,8 +176,13 @@ This document defines our company's mandatory security, cost, and operational pr
 | Tagging - cost-center | Required on all resources | 🟡 Warning |
 | Tagging - owner | Required on all resources | 🟡 Warning |
 | VMs - Idle | < 5% CPU for 14 days | 🟡 Warning |
+| VMs - High CPU | > 85% CPU for 7 days, upsize SKU | 🟡 Warning |
+| VMs - High Disk I/O | > 85% of SKU IOPS/throughput limit, upsize SKU | 🟡 Warning |
+| VMs - High NIC Throughput | > 85% of SKU bandwidth limit, upsize SKU | 🟡 Warning |
 | Disks - Orphaned | Unattached > 7 days | 🟡 Warning |
 | Storage - Public Access | Must be disabled | 🔴 Critical |
+| Defender - Production Servers | Plan P2 required (environment: prod/production) | 🔴 Critical |
+| Defender - Non-Production Servers | Plan P1 minimum (all other environment tags) | 🟡 Warning |
 
 ---
 
