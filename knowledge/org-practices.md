@@ -144,15 +144,27 @@ When a VM is consistently over-utilized on any of the following metrics, recomme
 
 The `environment` tag on a server determines the required Microsoft Defender for Servers plan:
 
-| Environment Tag Value | Recommended Defender Plan | Rationale |
-|-----------------------|---------------------------|-----------|
-| `production` / `prod` | **Defender for Servers Plan P2** | Full protection including vulnerability assessment, file integrity monitoring, and threat detection |
-| Any other value (e.g., `dev`, `staging`, `test`) | **Defender for Servers Plan P1** | Baseline protection at reduced cost for non-production workloads |
+**Allowed Environment Tag Values:**
 
-**Requirements:**
-- Servers tagged `environment: production` or `environment: prod` **must** have Defender for Servers **Plan P2** enabled
-- Servers tagged with any other environment value **should** have Defender for Servers **Plan P1** enabled as a minimum baseline
-- Servers with no `environment` tag should be flagged for tagging remediation before a Defender plan is assigned
+The `environment` tag must use one of the following standardized values (case-insensitive):
+
+| Allowed Values | Normalized To | Defender Plan Required | Description |
+|----------------|---------------|------------------------|-------------|
+| `production`, `prod`, `prd` | `prod` | **Plan P2** | Production workloads requiring full protection |
+| `staging`, `stage`, `stg` | `staging` | **Plan P1** | Pre-production staging environments |
+| `development`, `dev` | `dev` | **Plan P1** | Development environments |
+| `test`, `testing`, `qa` | `test` | **Plan P1** | Testing and QA environments |
+| `sandbox`, `sbx` | `sandbox` | **Plan P1** | Sandbox/experimental environments |
+
+**Normalization Rules:**
+- Tag values are evaluated **case-insensitively** (e.g., `Production`, `PROD`, `prod` all map to production tier)
+- Unrecognized or non-standard values (e.g., `demo`, `uat`, `preprod`) should trigger a compliance warning and require standardization
+- Resources with no `environment` tag are flagged as non-compliant and must be tagged before Defender plan assignment
+
+**Defender Plan Requirements:**
+- Servers tagged with **production-tier values** (`production`, `prod`, `prd`) **must** have Defender for Servers **Plan P2** enabled
+- Servers tagged with **all other recognized environment values** **should** have Defender for Servers **Plan P1** enabled as a minimum baseline
+- Servers with unrecognized or missing `environment` tags should be flagged for tagging remediation before a Defender plan is assigned
 - Defender plan must be applied at the subscription or resource level via Microsoft Defender for Cloud
 
 **Remediation:**
