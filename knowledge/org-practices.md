@@ -95,6 +95,83 @@ This document defines our company's mandatory security, cost, and operational pr
 - Underutilized VMs (< 20% CPU): Downsize by one tier
 - Batch workloads: Convert to Spot VMs
 
+**High Utilization — SKU Upsize Recommendations:**
+When a VM is consistently over-utilized on any of the following metrics, recommend upgrading to the next available SKU size:
+
+**Measurement Source & Aggregation:**
+- **Data Source:** Azure Monitor platform metrics collected at 1-minute intervals
+- **Evaluation Period:** 7 consecutive days
+- **Threshold Calculation:** Average (mean) value over the 7-day period
+- **Breach Definition:** Metric average must exceed threshold for at least 80% of the evaluation period (approximately 5.6 out of 7 days)
+
+**Specific Metric Thresholds:**
+- **CPU utilization > 85% average over 7+ days**
+  - Azure Monitor Metric: `Percentage CPU`
+  - Aggregation: Average
+  - VM is CPU-constrained, upsize to the next available SKU
+  
+- **Disk throughput or IOPS > 85% of SKU limit**
+  - Azure Monitor Metrics: `Data Disk IOPS Consumed Percentage` and `Data Disk Bandwidth Consumed Percentage`
+  - Aggregation: Average
+  - VM is disk I/O constrained, upsize to the next available SKU
+  
+- **Network (NIC) throughput > 85% of SKU bandwidth limit**
+  - Azure Monitor Metrics: `Network In Total` and `Network Out Total` (compare sum against SKU network bandwidth cap)
+  - Aggregation: Average
+  - VM is network-constrained, upsize to the next available SKU
+
+> **Primary Recommendation:** Upsize to the next immediately larger SKU within the same series (e.g., `Standard_D2s_v3` → `Standard_D4s_v3`) to minimize disruption and avoid over-provisioning.
+
+**Exceptions and Considerations:**
+- **Cross-series moves may be required** when:
+  - The next SKU in the same series doesn't increase the bottlenecked resource (e.g., disk/network caps may be identical across tiers in some series)
+  - The recommended SKU is unavailable in the target region or availability zone
+  - Storage type limitations prevent scaling (e.g., Premium SSD IOPS caps may require changing to Ultra Disk)
+- **Verify SKU availability** in the target region/availability zone before recommending
+- **Downtime warning:** VM resizing typically requires a reboot and can cause 5-15 minutes of downtime. Some configurations (OS type, disk attachments, availability sets) may require additional steps or extended downtime. Plan maintenance windows accordingly.
+
+**Exceptions and Considerations:**
+- **Cross-series moves may be required** when:
+  - The next SKU in the same series doesn't increase the bottlenecked resource (e.g., disk/network caps may be identical across tiers in some series)
+  - The recommended SKU is unavailable in the target region or availability zone
+  - Storage type limitations prevent scaling (e.g., Premium SSD IOPS caps may require changing to Ultra Disk)
+- **Verify SKU availability** in the target region/availability zone before recommending
+- **Downtime warning:** VM resizing typically requires a reboot and can cause 5-15 minutes of downtime. Some configurations (OS type, disk attachments, availability sets) may require additional steps or extended downtime. Plan maintenance windows accordingly.
+
+### Microsoft Defender for Servers
+
+**Plan Selection Based on Environment Tag:**
+
+The `environment` tag on a server determines the required Microsoft Defender for Servers plan:
+
+**Allowed Environment Tag Values:**
+
+The `environment` tag must use one of the following standardized values (case-insensitive):
+
+| Allowed Values | Normalized To | Defender Plan Required | Description |
+|----------------|---------------|------------------------|-------------|
+| `production`, `prod`, `prd` | `prod` | **Plan P2** | Production workloads requiring full protection |
+| `staging`, `stage`, `stg` | `staging` | **Plan P1** | Pre-production staging environments |
+| `development`, `dev` | `dev` | **Plan P1** | Development environments |
+| `test`, `testing`, `qa` | `test` | **Plan P1** | Testing and QA environments |
+| `sandbox`, `sbx` | `sandbox` | **Plan P1** | Sandbox/experimental environments |
+
+**Normalization Rules:**
+- Tag values are evaluated **case-insensitively** (e.g., `Production`, `PROD`, `prod` all map to production tier)
+- Unrecognized or non-standard values (e.g., `demo`, `uat`, `preprod`) should trigger a compliance warning and require standardization
+- Resources with no `environment` tag are flagged as non-compliant and must be tagged before Defender plan assignment
+
+**Defender Plan Requirements:**
+- Servers tagged with **production-tier values** (`production`, `prod`, `prd`) **must** have Defender for Servers **Plan P2** enabled
+- Servers tagged with **all other recognized environment values** **should** have Defender for Servers **Plan P1** enabled as a minimum baseline
+- Servers with unrecognized or missing `environment` tags should be flagged for tagging remediation before a Defender plan is assigned
+- Defender plan must be applied at the subscription or resource level via Microsoft Defender for Cloud
+
+**Remediation:**
+- Review Defender for Cloud coverage and ensure all servers have an active plan
+- Upgrade non-compliant production servers from P1 to P2
+- For non-production servers on P2, consider downgrading to P1 to reduce costs
+
 ### Orphaned Resources
 
 **Resources to Monitor:**
@@ -146,8 +223,13 @@ This document defines our company's mandatory security, cost, and operational pr
 | Tagging - cost-center | Required on all resources | 🟡 Warning |
 | Tagging - owner | Required on all resources | 🟡 Warning |
 | VMs - Idle | < 5% CPU for 14 days | 🟡 Warning |
+| VMs - High CPU | > 85% CPU for 7 days, upsize SKU | 🟡 Warning |
+| VMs - High Disk I/O | > 85% of SKU IOPS/throughput limit, upsize SKU | 🟡 Warning |
+| VMs - High NIC Throughput | > 85% of SKU bandwidth limit, upsize SKU | 🟡 Warning |
 | Disks - Orphaned | Unattached > 7 days | 🟡 Warning |
 | Storage - Public Access | Must be disabled | 🔴 Critical |
+| Defender - Production Servers | Plan P2 required (environment: prod/production) | 🔴 Critical |
+| Defender - Non-Production Servers | Plan P1 minimum (all other environment tags) | 🟡 Warning |
 
 ---
 
