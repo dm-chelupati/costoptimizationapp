@@ -97,11 +97,46 @@ This document defines our company's mandatory security, cost, and operational pr
 
 **High Utilization — SKU Upsize Recommendations:**
 When a VM is consistently over-utilized on any of the following metrics, recommend upgrading to the next available SKU size:
-- **CPU utilization > 85% average over 7+ days** - VM is CPU-constrained, upsize to the next available SKU
-- **Disk throughput or IOPS > 85% of SKU limit** - VM is disk I/O constrained, upsize to the next available SKU
-- **Network (NIC) throughput > 85% of SKU bandwidth limit** - VM is network-constrained, upsize to the next available SKU
 
-> Recommend the next immediately larger SKU within the same series (e.g., `Standard_D2s_v3` → `Standard_D4s_v3`) to minimize disruption and avoid over-provisioning.
+**Measurement Source & Aggregation:**
+- **Data Source:** Azure Monitor platform metrics collected at 1-minute intervals
+- **Evaluation Period:** 7 consecutive days
+- **Threshold Calculation:** Average (mean) value over the 7-day period
+- **Breach Definition:** Metric average must exceed threshold for at least 80% of the evaluation period (approximately 5.6 out of 7 days)
+
+**Specific Metric Thresholds:**
+- **CPU utilization > 85% average over 7+ days**
+  - Azure Monitor Metric: `Percentage CPU`
+  - Aggregation: Average
+  - VM is CPU-constrained, upsize to the next available SKU
+  
+- **Disk throughput or IOPS > 85% of SKU limit**
+  - Azure Monitor Metrics: `Data Disk IOPS Consumed Percentage` and `Data Disk Bandwidth Consumed Percentage`
+  - Aggregation: Average
+  - VM is disk I/O constrained, upsize to the next available SKU
+  
+- **Network (NIC) throughput > 85% of SKU bandwidth limit**
+  - Azure Monitor Metrics: `Network In Total` and `Network Out Total` (compare sum against SKU network bandwidth cap)
+  - Aggregation: Average
+  - VM is network-constrained, upsize to the next available SKU
+
+> **Primary Recommendation:** Upsize to the next immediately larger SKU within the same series (e.g., `Standard_D2s_v3` → `Standard_D4s_v3`) to minimize disruption and avoid over-provisioning.
+
+**Exceptions and Considerations:**
+- **Cross-series moves may be required** when:
+  - The next SKU in the same series doesn't increase the bottlenecked resource (e.g., disk/network caps may be identical across tiers in some series)
+  - The recommended SKU is unavailable in the target region or availability zone
+  - Storage type limitations prevent scaling (e.g., Premium SSD IOPS caps may require changing to Ultra Disk)
+- **Verify SKU availability** in the target region/availability zone before recommending
+- **Downtime warning:** VM resizing typically requires a reboot and can cause 5-15 minutes of downtime. Some configurations (OS type, disk attachments, availability sets) may require additional steps or extended downtime. Plan maintenance windows accordingly.
+
+**Exceptions and Considerations:**
+- **Cross-series moves may be required** when:
+  - The next SKU in the same series doesn't increase the bottlenecked resource (e.g., disk/network caps may be identical across tiers in some series)
+  - The recommended SKU is unavailable in the target region or availability zone
+  - Storage type limitations prevent scaling (e.g., Premium SSD IOPS caps may require changing to Ultra Disk)
+- **Verify SKU availability** in the target region/availability zone before recommending
+- **Downtime warning:** VM resizing typically requires a reboot and can cause 5-15 minutes of downtime. Some configurations (OS type, disk attachments, availability sets) may require additional steps or extended downtime. Plan maintenance windows accordingly.
 
 ### Microsoft Defender for Servers
 
